@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import jsPDF from "jspdf";
 import {
   FileDown,
   FileText,
@@ -63,6 +64,15 @@ export function ResumeOptimizer() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file type
+      if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'].includes(file.type)) {
+          toast({
+              variant: "destructive",
+              title: "Invalid File Type",
+              description: "Please upload a .pdf, .docx, or .txt file.",
+          });
+          return;
+      }
       form.setValue("resumeFile", file);
       form.setValue("resumeText", "");
       setFileName(file.name);
@@ -113,7 +123,7 @@ export function ResumeOptimizer() {
     }
   }
 
-  const handleDownload = (content: string, format: "txt" | "doc") => {
+  const handleDownload = (content: string, format: "txt" | "doc" | "pdf") => {
     if (!content) return;
     
     let mimeType = '';
@@ -122,22 +132,42 @@ export function ResumeOptimizer() {
     if (format === 'txt') {
         mimeType = 'text/plain;charset=utf-8';
         filename += '.txt';
-    } else { // doc
+        const blob = new Blob([content], { type: mimeType });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    } else if (format === 'doc') {
         mimeType = 'application/msword';
         filename += '.doc';
         const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tailored Resume</title></head><body>";
         const footer = "</body></html>";
-        content = header + content.replace(/\n/g, '<br />') + footer;
+        const docContent = header + content.replace(/\n/g, '<br />') + footer;
+        const blob = new Blob([docContent], { type: mimeType });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    } else if (format === 'pdf') {
+        const doc = new jsPDF({
+          orientation: 'p',
+          unit: 'px',
+          format: 'a4'
+        });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(11);
+        const margin = 20;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const textLines = doc.splitTextToSize(content, pageWidth - margin * 2);
+        doc.text(textLines, margin, margin);
+        doc.save('tailored-resume.pdf');
     }
-
-    const blob = new Blob([content], { type: mimeType });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
   };
 
   return (
@@ -288,9 +318,9 @@ export function ResumeOptimizer() {
                   <FileText className="mr-2 h-4 w-4" />
                   .doc
                 </Button>
-                <Button variant="outline" disabled>
+                <Button variant="default" onClick={() => handleDownload(result.fullResume, 'pdf')}>
                   <FileDown className="mr-2 h-4 w-4" />
-                  .pdf (soon)
+                  .pdf
                 </Button>
               </div>
             </CardFooter>

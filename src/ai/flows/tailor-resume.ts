@@ -3,7 +3,7 @@
  * @fileOverview This file defines a Genkit flow to tailor a resume to a specific job description.
  *
  * - tailorResumeToJobDescription -  A function that takes a resume and job description as input, and returns suggestions for tailoring the resume to the job description.
- * - TailorResumeInput - The input type for the tailorResumeToJobDescription function.
+ * - TailorResumeInput - The input type for the tailorResumeTo_jobDescription function.
  * - TailorResumeOutput - The return type for the tailorResumeToJobDescription function.
  */
 
@@ -36,62 +36,86 @@ const tailorResumePrompt = ai.definePrompt({
   name: 'tailorResumePrompt',
   input: {schema: TailorResumeInputSchema},
   output: {schema: TailorResumeOutputSchema},
-  prompt: `You are an expert resume writer and career coach. Your task is to take a user's resume and a job description, and create a new, perfectly tailored resume for that specific job.
+  prompt: `You are an expert resume writer and career coach specializing in corporate and IT roles. Your task is to create a professional, visually appealing, and ATS-friendly resume based on the user's provided resume and a specific job description.
 
-First, you'll provide brief suggestions for improvement. These suggestions should focus on highlighting relevant skills and experiences, and incorporating keywords from the job description.
+**Formatting and Design Guidelines:**
+1.  **ATS-Friendly:** Use a clean, single-column layout. Use standard, readable fonts (like Arial, Helvetica). Do not use graphics, images, or text in headers/footers.
+2.  **Professional Tone:** The language must be professional and action-oriented.
+3.  **Layout & Readability:** Ensure clear headings, balanced white space, and a logical information hierarchy. Use simple dividers (like "---") between major sections.
+4.  **No Colors:** Stick to black/dark gray text on a white background.
 
-Second, you will generate a complete, professionally formatted resume based on your suggestions. The resume must be ATS-friendly, professional, and visually appealing. The output should be a full resume, not just the changes.
+**Resume Structure:**
+Generate the resume in the following order. If the user's resume doesn't contain a section, omit it unless it's critical for the job description.
 
-Use the following structure and formatting for the generated resume:
+**[Full Name]**
+[Your Title, e.g., Senior Software Engineer]
+[Phone Number] | [Email Address] | [LinkedIn Profile URL] | [Portfolio/GitHub URL]
 
-[Your Name]
-[Phone Number] | [Email Address] | [LinkedIn Profile URL (optional)] | [Portfolio/Website URL (optional)]
-
-PROFESSIONAL SUMMARY
+**SUMMARY**
 ---
-A brief, 2-3 sentence summary that highlights your key qualifications and aligns with the target job description.
+A concise, 2-4 sentence summary tailored to the job description, highlighting key qualifications, years of experience, and career goals.
 
-SKILLS
+**SKILLS**
 ---
-- Skill 1
-- Skill 2
-- Skill 3
-(List relevant technical and soft skills, tailored to the job)
+-   **Languages:** [e.g., JavaScript, Python, Java]
+-   **Frameworks/Libraries:** [e.g., React, Node.js, Django]
+-   **Databases:** [e.g., PostgreSQL, MongoDB, MySQL]
+-   **Tools/Platforms:** [e.g., Docker, Kubernetes, AWS, Git]
 
-EXPERIENCE
+**EXPERIENCE**
 ---
 **[Job Title]** | [Company Name] | [City, State]
 [Month, Year] – [Month, Year or Present]
-- Use action verbs to start each bullet point. Describe your accomplishments, not just your duties. Quantify your achievements with numbers and data whenever possible.
-- Tailor each point to match the requirements in the job description.
-- Example: "Led a team of 5 engineers to develop a new feature that increased user engagement by 15%."
+-   Start each bullet point with a strong action verb (e.g., "Engineered," "Managed," "Accelerated").
+-   Focus on quantifiable achievements. How did you add value? (e.g., "Reduced API latency by 30%," "Increased user retention by 15%").
+-   Directly address skills and responsibilities mentioned in the job description.
 
-**[Previous Job Title]** | [Company Name] | [City, State]
-[Month, Year] – [Month, Year]
-- Accomplishment-driven bullet point.
-- Another accomplishment-driven bullet point.
+**CURRENT PROJECT IN PROGRESS** (Include if applicable)
+---
+**[Project Title]**
+*Brief one-sentence project description.*
+-   **Key Responsibilities:** [Detail your main duties and contributions]
+-   **Technologies Used:** [List the tech stack for this project]
 
-EDUCATION
+**PROJECTS**
+---
+**[Project Title]** | [Link to Project/Code]
+-   Bullet point describing the project and your role.
+-   Bullet point highlighting a key feature or technical challenge.
+
+**EDUCATION**
 ---
 **[Degree Name]** | [University Name] | [City, State]
 [Graduation Month, Year]
 
+**CERTIFICATIONS**
+---
+- [Certification Name] - [Issuing Organization] ([Year])
+- [Another Certification] - [Issuing Organization] ([Year])
+
+**LANGUAGES**
+---
+- [Language]: [Proficiency, e.g., Native, Fluent, Professional Working Proficiency]
+
 ---
 
-Here is the user's information:
-
+**User's Information:**
 {{#if resumeFile}}
-Resume File:
+**Resume File Content:**
 {{media url=resumeFile}}
 {{else}}
-Resume Text:
+**Resume Text:**
 {{resumeText}}
 {{/if}}
 
-Job Description:
+**Target Job Description:**
 {{jobDescription}}
 
-Provide your response in the requested JSON format, with both the suggestions and the full tailored resume text using the professional format described above. Ensure the fullResume field contains the complete, ready-to-use resume.`,
+**Your Task:**
+1.  **Suggestions:** First, provide a brief paragraph with high-level suggestions for improvement, focusing on keyword alignment and impact.
+2.  **Full Resume:** Second, generate the complete, tailored resume text in the `fullResume` field. Follow the structure and guidelines above precisely. Ensure the output is a single block of text, ready for copy-pasting.
+
+Provide the response in the requested JSON format.`,
 });
 
 const tailorResumeFlow = ai.defineFlow(
@@ -105,5 +129,3 @@ const tailorResumeFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    
