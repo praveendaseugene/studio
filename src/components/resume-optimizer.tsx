@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,6 +11,8 @@ import {
   Wand2,
   Paperclip,
   BookUser,
+  Upload,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,13 +28,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { generateSuggestions } from "@/app/actions";
 import type { TailorResumeOutput } from "@/ai/flows/tailor-resume";
 
 const formSchema = z.object({
   jobDescription: z.string().min(50, "Job description is too short.").max(15000, "Job description is too long."),
-  resumeText: z.string().min(50, "Resume text is too short.").max(15000, "Resume is too long."),
+  resumeText: z.string().optional(),
+  resumeFile: z.instanceof(File).optional(),
+}).refine(data => data.resumeText || data.resumeFile, {
+  message: "Either resume text or a resume file is required.",
+  path: ["resumeText"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -41,6 +48,8 @@ export function ResumeOptimizer() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<TailorResumeOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -51,13 +60,45 @@ export function ResumeOptimizer() {
     },
   });
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue("resumeFile", file);
+      form.setValue("resumeText", "");
+      setFileName(file.name);
+      form.clearErrors("resumeText");
+    }
+  };
+
+  const handleRemoveFile = () => {
+    form.setValue("resumeFile", undefined);
+    setFileName(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await generateSuggestions(values);
+      let resumeFileAsDataUri: string | undefined;
+      if (values.resumeFile) {
+        resumeFileAsDataUri = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(values.resumeFile as File);
+        });
+      }
+
+      const response = await generateSuggestions({
+        jobDescription: values.jobDescription,
+        resumeText: values.resumeText,
+        resumeFile: resumeFileAsDataUri,
+      });
       setResult(response);
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : "An unexpected error occurred.";
@@ -71,13 +112,12 @@ export function ResumeOptimizer() {
       setIsLoading(false);
     }
   }
-  
-  const handleDownload = (format: "txt" | "doc") => {
-    if (!result?.suggestions) return;
+
+  const handleDownload = (content: string, format: "txt" | "doc") => {
+    if (!content) return;
     
-    let content = result.suggestions;
     let mimeType = '';
-    let filename = 'optimized-resume-suggestions';
+    let filename = 'tailored-resume';
 
     if (format === 'txt') {
         mimeType = 'text/plain;charset=utf-8';
@@ -85,9 +125,9 @@ export function ResumeOptimizer() {
     } else { // doc
         mimeType = 'application/msword';
         filename += '.doc';
-        const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Resume Suggestions</title></head><body>";
+        const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tailored Resume</title></head><body>";
         const footer = "</body></html>";
-        content = header + result.suggestions.replace(/\n/g, '<br />') + footer;
+        content = header + content.replace(/\n/g, '<br />') + footer;
     }
 
     const blob = new Blob([content], { type: mimeType });
@@ -138,12 +178,44 @@ export function ResumeOptimizer() {
                       <BookUser className="h-4 w-4" />
                       Your Current Resume
                     </FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Paste your current resume text here..."
-                        className="min-h-[200px] resize-y"
-                        {...field}
-                      />
+                     <FormControl>
+                      <>
+                        <Textarea
+                          placeholder="Paste your current resume text here..."
+                          className="min-h-[200px] resize-y"
+                          {...field}
+                          disabled={!!fileName}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            if (e.target.value) {
+                              handleRemoveFile();
+                            }
+                          }}
+                        />
+                         <div className="relative mt-2">
+                           <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={!!form.getValues("resumeText")}>
+                             <Upload className="mr-2 h-4 w-4" />
+                             Upload File
+                           </Button>
+                           <Input
+                              type="file"
+                              ref={fileInputRef}
+                              className="hidden"
+                              onChange={handleFileChange}
+                              accept=".pdf,.doc,.docx,.txt"
+                              disabled={!!form.getValues("resumeText")}
+                           />
+                           {fileName && (
+                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                               <FileText className="h-4 w-4" />
+                               <span>{fileName}</span>
+                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveFile}>
+                                 <X className="h-4 w-4" />
+                               </Button>
+                             </div>
+                           )}
+                         </div>
+                      </>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -155,7 +227,7 @@ export function ResumeOptimizer() {
                 ) : (
                   <Wand2 className="mr-2 h-4 w-4" />
                 )}
-                Generate Suggestions
+                Generate Tailored CV
               </Button>
             </form>
           </Form>
@@ -188,7 +260,7 @@ export function ResumeOptimizer() {
                 <CardContent className="text-center">
                     <Wand2 className="mx-auto h-12 w-12 text-muted-foreground" />
                     <p className="mt-4 text-lg text-muted-foreground">
-                        Your AI-tailored resume suggestions will appear here.
+                        Your AI-tailored resume will appear here.
                     </p>
                 </CardContent>
             </Card>
@@ -197,22 +269,22 @@ export function ResumeOptimizer() {
           <Card className="bg-gradient-to-br from-card to-secondary/20">
             <CardHeader>
               <CardTitle className="font-headline text-2xl">
-                AI-Powered Resume Suggestions
+                Your AI-Tailored Resume
               </CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap rounded-md bg-secondary/30 p-4 font-body text-foreground">
-                    {result.suggestions}
+                    {result.fullResume}
                 </div>
             </CardContent>
             <CardFooter className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">Download your suggestions:</p>
+              <p className="text-sm text-muted-foreground">Download your new resume:</p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleDownload('txt')}>
+                <Button variant="outline" onClick={() => handleDownload(result.fullResume, 'txt')}>
                   <FileText className="mr-2 h-4 w-4" />
                   .txt
                 </Button>
-                <Button variant="outline" onClick={() => handleDownload('doc')}>
+                <Button variant="outline" onClick={() => handleDownload(result.fullResume, 'doc')}>
                   <FileText className="mr-2 h-4 w-4" />
                   .doc
                 </Button>

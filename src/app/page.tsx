@@ -13,7 +13,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="max-w-2xl text-muted-foreground md:text-xl">
-            Paste a job description and your resume to receive AI-powered suggestions for landing your next role.
+            Paste a job description and your resume to receive a new, tailored CV, powered by AI.
           </p>
         </header>
         <ResumeOptimizer />
