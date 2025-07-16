@@ -113,7 +113,7 @@ A concise, 2-4 sentence summary tailored to the job description, highlighting ke
 
 **Your Task:**
 1.  **Suggestions:** First, provide a brief paragraph with high-level suggestions for improvement, focusing on keyword alignment and impact.
-2.  **Full Resume:** Second, generate the complete, tailored resume text in the `fullResume` field. Follow the structure and guidelines above precisely. Ensure the output is a single block of text, ready for copy-pasting.
+2.  **Full Resume:** Second, generate the complete, tailored resume text in the fullResume field. Follow the structure and guidelines above precisely. Ensure the output is a single block of text, ready for copy-pasting.
 
 Provide the response in the requested JSON format.`,
 });
