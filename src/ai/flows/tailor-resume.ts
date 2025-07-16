@@ -3,49 +3,6 @@
  * @fileOverview This file defines a Genkit flow to tailor a resume to a specific job description.
  *
  * - tailorResumeToJobDescription -  A function that takes a resume and job description as input, and returns suggestions for tailoring the resume to the job description.
- * - TailorResumeInput - The input type for the tailorResumeToJobD<ctrl61>the schema. The prompt currently takes `resumeText` and `jobDescription`.
-
-Let's check `src/ai/flows/tailor-resume.ts`.
-The input schema is `TailorResumeInputSchema`.
-```typescript
-const TailorResumeInputSchema = z.object({
-  resumeText: z.string().describe('The text content of the resume.'),
-  jobDescription: z.string().describe('The job description to tailor the resume to.'),
-});
-```
-
-I can add an optional field for the file, say `resumeFile`.
-`resumeFile: z.string().optional().describe("The user's resume as a data URI...")`
-Then in the flow, I can check if `resumeFile` is present. If so, I can use it.
-The prompt has `{{media url=photoDataUri}}`. It seems I can use that for files.
-
-So, in `tailor-resume.ts`, I'll modify the input schema:
-```typescript
-const TailorResumeInputSchema = z.object({
-  resumeText: z.string().optional().describe('The text content of the resume.'),
-  resumeFile: z
-    .string()
-    .optional()
-    .describe(
-      "The user's resume as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-  jobDescription: z.string().describe('The job description to tailor the resume to.'),
-});
-```
-
-The prompt needs to be updated to handle either `resumeText` or `resumeFile`.Of course! I can definitely add those features. You'll be able to upload a resume file, and the AI will generate a complete, tailored resume that you can download. Here are the changes.
-
-I have updated the application to allow uploading a resume file and to generate a full, downloadable resume based on the AI's suggestions.
-
-<changes>
-  <description>Implemented resume file upload and generation of a full, downloadable resume. The form now accepts .pdf, .docx, and .txt files. The AI flow was updated to extract text from uploaded files and to generate a complete resume. The UI now displays the generated resume and allows downloading it in .txt, .docx, and .pdf formats (with PDF generation support coming soon).</description>
-  <change>
-    <file>/src/ai/flows/tailor-resume.ts</file>
-    <content><![CDATA['use server';
-/**
- * @fileOverview This file defines a Genkit flow to tailor a resume to a specific job description.
- *
- * - tailorResumeToJobDescription -  A function that takes a resume and job description as input, and returns suggestions for tailoring the resume to the job description.
  * - TailorResumeInput - The input type for the tailorResumeToJobDescription function.
  * - TailorResumeOutput - The return type for the tailorResumeToJobDescription function.
  */
@@ -81,9 +38,45 @@ const tailorResumePrompt = ai.definePrompt({
   output: {schema: TailorResumeOutputSchema},
   prompt: `You are an expert resume writer and career coach. Your task is to take a user's resume and a job description, and create a new, perfectly tailored resume for that specific job.
 
-First, you'll provide suggestions for improvement. These suggestions should focus on highlighting relevant skills and experiences, and incorporating keywords from the job description.
+First, you'll provide brief suggestions for improvement. These suggestions should focus on highlighting relevant skills and experiences, and incorporating keywords from the job description.
 
-Second, you will generate a complete, professionally formatted resume based on your suggestions. The output should be a full resume, not just the changes.
+Second, you will generate a complete, professionally formatted resume based on your suggestions. The resume must be ATS-friendly, professional, and visually appealing. The output should be a full resume, not just the changes.
+
+Use the following structure and formatting for the generated resume:
+
+[Your Name]
+[Phone Number] | [Email Address] | [LinkedIn Profile URL (optional)] | [Portfolio/Website URL (optional)]
+
+PROFESSIONAL SUMMARY
+---
+A brief, 2-3 sentence summary that highlights your key qualifications and aligns with the target job description.
+
+SKILLS
+---
+- Skill 1
+- Skill 2
+- Skill 3
+(List relevant technical and soft skills, tailored to the job)
+
+EXPERIENCE
+---
+**[Job Title]** | [Company Name] | [City, State]
+[Month, Year] – [Month, Year or Present]
+- Use action verbs to start each bullet point. Describe your accomplishments, not just your duties. Quantify your achievements with numbers and data whenever possible.
+- Tailor each point to match the requirements in the job description.
+- Example: "Led a team of 5 engineers to develop a new feature that increased user engagement by 15%."
+
+**[Previous Job Title]** | [Company Name] | [City, State]
+[Month, Year] – [Month, Year]
+- Accomplishment-driven bullet point.
+- Another accomplishment-driven bullet point.
+
+EDUCATION
+---
+**[Degree Name]** | [University Name] | [City, State]
+[Graduation Month, Year]
+
+---
 
 Here is the user's information:
 
@@ -98,7 +91,7 @@ Resume Text:
 Job Description:
 {{jobDescription}}
 
-Provide your response in the requested JSON format, with both the suggestions and the full tailored resume text.`,
+Provide your response in the requested JSON format, with both the suggestions and the full tailored resume text using the professional format described above. Ensure the fullResume field contains the complete, ready-to-use resume.`,
 });
 
 const tailorResumeFlow = ai.defineFlow(
@@ -112,3 +105,5 @@ const tailorResumeFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
